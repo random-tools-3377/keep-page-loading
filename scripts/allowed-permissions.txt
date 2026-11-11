@@ -1,0 +1,11 @@
+# Every permission the app may ask for. The build fails if the APK asks for anything else, which
+# catches a library quietly adding one when the manifests are merged.
+android.permission.INTERNET
+android.permission.ACCESS_NETWORK_STATE
+android.permission.WAKE_LOCK
+android.permission.FOREGROUND_SERVICE
+android.permission.FOREGROUND_SERVICE_SPECIAL_USE
+android.permission.POST_NOTIFICATIONS
+android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+# Added by AndroidX so the app's own broadcasts stay private to it.
+${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION

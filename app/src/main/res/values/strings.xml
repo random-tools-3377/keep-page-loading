@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Keep Page Loading</string>
+
+    <string name="address_hint">Type a web address</string>
+    <string name="not_an_address">That doesn\'t look like a web address. Try something like example.com</string>
+    <string name="more">More</string>
+    <string name="start_hint">Type the address of the page you want to keep running, then press Go.\n\nIt keeps running with the screen off, and when you leave the app, until you tap Stop in its notification.</string>
+
+    <string name="menu_reload">Reload</string>
+    <string name="menu_forward">Forward</string>
+    <string name="menu_battery">Battery settings</string>
+    <string name="menu_stop">Stop and close</string>
+
+    <string name="channel_name">Keeping a page running</string>
+    <string name="channel_description">Shows while a page is kept running, with a Stop button.</string>
+    <string name="notification_title">Keeping a page running</string>
+    <string name="notification_no_page">No page open yet</string>
+    <string name="notification_stop">Stop</string>
+
+    <string name="page_crashed">The page stopped working, so it was loaded again.</string>
+    <string name="page_crashed_again">The page keeps stopping. Tap Reload to try again.</string>
+    <string name="no_app_for_link">No app on this phone can open that link.</string>
+    <string name="no_file_picker">This phone has no app to pick a file with.</string>
+    <string name="battery_settings_hint">Under Battery, choose Unrestricted, so the phone never puts the app to sleep.</string>
+    <string name="battery_settings_missing">Open the phone\'s Settings, then Apps, then Keep Page Loading, then Battery, and choose Unrestricted.</string>
+
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="leave_page_title">Leave this page?</string>
+    <string name="leave">Leave</string>
+    <string name="stay">Stay</string>
+</resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A page with a crescent moon on it: the page keeps going while the phone sleeps. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M41,30H67A5,5 0,0 1,72 35V73A5,5 0,0 1,67 78H41A5,5 0,0 1,36 73V35A5,5 0,0 1,41 30Z" />
+    <path
+        android:fillColor="@color/icon_background"
+        android:pathData="M50.63,43.53A11,11 0,1 0,64.47 57.37A10,10 0,0 1,50.63 43.53Z" />
+</vector>

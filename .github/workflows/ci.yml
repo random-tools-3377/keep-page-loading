@@ -1,0 +1,175 @@
+name: CI
+
+# Runs on every push. Releases come only from pushes to main.
+#
+# There is deliberately no pull_request or pull_request_target trigger: code from pull requests
+# never runs here. The signing secrets are read only by the "sign" job, which runs no build
+# code: it signs and checks an APK that the "build" job made without any secrets.
+on:
+  push:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.ref == 'refs/heads/main' && format('ci-main-{0}', github.sha) || format('ci-{0}', github.ref) }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  # The release certificate. Every release must be signed with it, or Android refuses to
+  # install the update over the app already on the phone.
+  RELEASE_CERT_SHA256: "1F:E2:3D:3F:56:33:85:EE:82:BD:D7:F5:C0:CB:3C:E2:5B:A5:82:DA:E4:2D:5F:3A:72:60:32:E7:B5:3A:E5:CD"
+
+jobs:
+  build:
+    name: Build, lint and unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Unit tests, lint, and the release APK (unsigned)
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:lintRelease :app:assembleRelease
+
+      - name: Check the APK asks for no unexpected permissions
+        run: scripts/check-permissions.sh app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Keep the unsigned APK for the sign job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unsigned-apk
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Keep the reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build-reports
+          path: app/build/reports
+          if-no-files-found: ignore
+          retention-days: 7
+
+  emulator:
+    name: Emulator test (the page keeps running with the screen off)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Let the emulator use hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build the app and its test
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+
+      # The Google APIs image has the same WebView as phones with Google's apps.
+      - name: Run the test on an emulator
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest
+
+      - name: Show what the test measured
+        if: always()
+        run: |
+          find app/build/outputs/androidTest-results -name 'logcat-*.txt' \
+            -exec grep -h 'KeepsRunningTest' {} + 2>/dev/null | head -n 50 || true
+          find app/build/outputs/androidTest-results -name 'TEST-*.xml' \
+            -exec sed -n '/<failure/,/<\/failure>/p' {} + 2>/dev/null | head -n 200 || true
+
+      - name: Keep the test reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: emulator-reports
+          path: |
+            app/build/reports/androidTests
+            app/build/outputs/androidTest-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  sign:
+    name: Sign and check the release APK
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      # Only this repository's scripts are used here; no build code runs in this job.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: unsigned-apk
+          path: dist
+
+      - name: Sign with the release key
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: scripts/sign-apk.sh dist/app-release-unsigned.apk dist/keep-page-loading.apk
+
+      - name: Check the signature is the release certificate
+        run: scripts/check-signature.sh dist/keep-page-loading.apk "$RELEASE_CERT_SHA256"
+
+      - name: Keep the signed APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: signed-apk
+          path: dist/keep-page-loading.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish the Release
+    needs: [sign, emulator]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: signed-apk
+          path: dist
+
+      - name: Check once more before publishing
+        run: |
+          scripts/check-signature.sh dist/keep-page-loading.apk "$RELEASE_CERT_SHA256"
+          scripts/check-permissions.sh dist/keep-page-loading.apk
+
+      - name: Publish the signed APK as a Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/publish-release.sh dist/keep-page-loading.apk
