@@ -6,10 +6,7 @@ import android.content.MutableContextWrapper
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
-import android.media.ImageReader
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -20,16 +17,17 @@ import android.widget.FrameLayout
  * Holds the page in an invisible window while the app's screen is closed (swiped away, say).
  *
  * A WebView that isn't in any window is slowed right down, whatever the page is told. So when
- * the screen closes, the page moves into a window on a small private display that only this app
- * can see and nothing is shown on, and moves back when the screen opens again. The page keeps
- * its size, so it doesn't rearrange itself.
+ * the screen closes, the page moves into a window on a private display that only this app can
+ * see, and moves back when the screen opens again. The page keeps its size, so it doesn't
+ * rearrange itself.
  *
- * A private display of the app's own needs no permission.
+ * The display has nowhere to show anything, so nothing is drawn while the page is parked, which
+ * saves the battery: the page runs as it does with the screen off. A private display of the
+ * app's own needs no permission.
  */
 @SuppressLint("StaticFieldLeak") // The window is meant to last exactly as long as the page is parked.
 object Parking {
     private var display: VirtualDisplay? = null
-    private var reader: ImageReader? = null
     private var window: FrameLayout? = null
     private var windowManager: WindowManager? = null
 
@@ -53,20 +51,15 @@ object Parking {
     fun park(app: Context, web: WebView, wrapper: MutableContextWrapper?, width: Int, height: Int) {
         leave(web)
         var virtual: VirtualDisplay? = null
-        var images: ImageReader? = null
         val holder: FrameLayout
         try {
             val metrics = app.resources.displayMetrics
             val w = (if (width > 0) width else metrics.widthPixels).coerceAtLeast(1)
             val h = (if (height > 0) height else metrics.heightPixels).coerceAtLeast(1)
 
-            // What the page draws goes here and is thrown away straight away, so drawing never
-            // waits for room.
-            images = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2).apply {
-                setOnImageAvailableListener({ it.acquireLatestImage()?.close() }, Handler(Looper.getMainLooper()))
-            }
+            // No surface: the display shows nothing, so nothing is drawn for it.
             virtual = app.getSystemService(DisplayManager::class.java)
-                .createVirtualDisplay("keep-page-loading", w, h, metrics.densityDpi, images.surface, 0)
+                .createVirtualDisplay("keep-page-loading", w, h, metrics.densityDpi, null, 0)
             val displayContext = app.createDisplayContext(virtual.display)
             val windowContext = if (Build.VERSION.SDK_INT >= 30) {
                 displayContext.createWindowContext(WindowManager.LayoutParams.TYPE_PRIVATE_PRESENTATION, null)
@@ -91,7 +84,6 @@ object Parking {
                 ),
             )
             display = virtual
-            reader = images
             window = holder
             windowManager = manager
             context = windowContext
@@ -103,7 +95,6 @@ object Parking {
             (web.parent as? ViewGroup)?.removeView(web)
             wrapper?.baseContext = app
             virtual?.release()
-            images?.close()
         }
     }
 
@@ -117,9 +108,7 @@ object Parking {
             // Already gone.
         }
         display?.release()
-        reader?.close()
         display = null
-        reader = null
         window = null
         windowManager = null
         context = null

@@ -86,32 +86,44 @@ class KeepsRunningTest {
 
     @Test
     fun keepsRunningAfterTheAppIsClosed() {
-        val scenario = ActivityScenario.launch(MainActivity::class.java)
-        scenario.onActivity { screen ->
-            loadTestPage(Page.currentView!!)
-            KeepRunningService.start(screen)
-        }
-        Thread.sleep(5_000)
-        // Like swiping the app away: the screen closes, the page should not.
-        scenario.close()
-        Thread.sleep(2_000)
-        var screenLeft: MainActivity? = null
-        var parked = false
-        var parkingError: String? = null
-        instrumentation.runOnMainSync {
-            screenLeft = Page.screen
-            parked = Parking.isParked
-            parkingError = Parking.lastError
-        }
-        assertNull("The screen should be closed", screenLeft)
-        assertTrue("The page should be in its invisible window: $parkingError", parked)
+        // Swiped away and opened again three times: the page must keep going each time, and must
+        // be the same page when the app opens again, not loaded afresh.
+        var last: JSONObject? = null
+        repeat(3) { round ->
+            val scenario = ActivityScenario.launch(MainActivity::class.java)
+            scenario.onActivity { screen ->
+                if (round == 0) loadTestPage(Page.currentView!!)
+                KeepRunningService.start(screen)
+            }
+            Thread.sleep(3_000)
+            val shown = report(Page.currentView!!)
+            last?.let {
+                assertTrue(
+                    "Opening the app again should show the same page, still counting: before $it, now $shown",
+                    shown.getInt("counted") > it.getInt("counted"),
+                )
+            }
 
-        val before = report(Page.currentView!!)
-        Thread.sleep(60_000)
-        val after = report(Page.currentView!!)
-        Log.i(TAG, "With the app closed: before $before, after $after")
+            scenario.close()
+            Thread.sleep(2_000)
+            var screenLeft: MainActivity? = null
+            var parked = false
+            var parkingError: String? = null
+            instrumentation.runOnMainSync {
+                screenLeft = Page.screen
+                parked = Parking.isParked
+                parkingError = Parking.lastError
+            }
+            assertNull("The screen should be closed", screenLeft)
+            assertTrue("The page should be in its invisible window: $parkingError", parked)
 
-        checkKeptRunning(before, after, seconds = 60)
+            val before = report(Page.currentView!!)
+            Thread.sleep(20_000)
+            val after = report(Page.currentView!!)
+            Log.i(TAG, "With the app closed, round ${round + 1}: before $before, after $after")
+            checkKeptRunning(before, after, seconds = 20)
+            last = after
+        }
         val service = serviceState()
         assertTrue("The notification should be keeping the app running: $service", "isForeground=true" in service)
     }

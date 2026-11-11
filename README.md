@@ -34,9 +34,10 @@ If the phone still closes it (some Samsung, Xiaomi and other phones do), tap ⋮
 ## Tested
 
 On every push, an emulator opens a test page that counts all the time and pauses itself when it
-is hidden or loses focus, like the sites this app is for. The test turns the screen off, sends
-the emulator into deep sleep (Doze) for two minutes, then closes the app for a minute, and checks
-the page kept counting at full speed and never noticed. The same page in an ordinary WebView
+is hidden or loses focus, like the sites this app is for. The test turns the screen off and
+sends the emulator into deep sleep (Doze) for two minutes, then swipes the app away and opens it
+again three times, and checks the page kept counting at full speed, never noticed, and was the
+same page each time the app opened. The same page in an ordinary WebView
 beside it does notice, which shows the test is real. A Release is only published when it passes.
 
 An emulator isn't a real phone: a phone maker's own battery saving can still differ.
