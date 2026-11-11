@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.JsPromptResult
@@ -38,6 +39,8 @@ import java.net.URISyntaxException
  */
 @SuppressLint("StaticFieldLeak") // Holds the application, and the open screen only while it's open.
 object Page {
+    private const val LOG = "PageLog"
+
     lateinit var app: Context
 
     private var view: KeepRunningWebView? = null
@@ -80,6 +83,7 @@ object Page {
     /** The screen is closing. The page carries on without it, in its invisible window. */
     fun detach(screen: MainActivity) {
         if (this.screen !== screen) return
+        Log.i(LOG, "The screen closed; parking the page")
         dialog?.dismiss()
         dialog = null
         this.screen = null
@@ -217,7 +221,8 @@ object Page {
     }
 
     /** The page's process stopped (Android closed it, or it crashed). Make a new one. */
-    private fun rendererGone(dead: WebView) {
+    private fun rendererGone(dead: WebView, crashed: Boolean, priority: Int) {
+        Log.w(LOG, "The page's process stopped: crashed=$crashed, priority=$priority, parked=${Parking.isParked}")
         if (dead !== view) {
             dead.destroy()
             return
@@ -279,7 +284,7 @@ object Page {
         }
 
         override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
-            rendererGone(view)
+            rendererGone(view, detail.didCrash(), detail.rendererPriorityAtExit())
             return true
         }
     }

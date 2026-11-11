@@ -102,7 +102,11 @@ jobs:
         run: |
           log=app/build/device-logcat.txt
           if [ -f "$log" ]; then
-            grep -E 'KeepsRunningTest|Parking|AndroidRuntime|FATAL|DEBUG +: |libc +: |chromium.*(FATAL|Check failed|ERROR)|keeppageloading.*(died|crash|ANR|Killing|kill)' "$log" | tail -n 250 || true
+            # Everything the app's process logged, and everything the system said about the app.
+            pid="$(grep -m1 -E ' TestRunner: started' "$log" | awk '{print $3}')"
+            echo "App process: $pid"
+            grep -E "^[0-9-]+ [0-9:.]+ +$pid |keeppageloading|sandboxed_process|webview_service|KeepsRunningTest|Parking|PageLog" "$log" \
+              | grep -vE 'Access denied finding property|TestRunner: (run started|run finished)' | tail -n 400 || true
           fi
           find app/build/outputs/androidTest-results -name 'TEST-*.xml' \
             -exec sed -n '/<failure/,/<\/failure>/p' {} + 2>/dev/null | head -n 100 || true
