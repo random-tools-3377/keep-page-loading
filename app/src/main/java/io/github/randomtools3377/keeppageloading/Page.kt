@@ -87,8 +87,7 @@ object Page {
     }
 
     private fun park(web: KeepRunningWebView) {
-        Parking.park(app, web, lastWidth, lastHeight)
-        context?.baseContext = Parking.context ?: app
+        Parking.park(app, web, context, lastWidth, lastHeight)
     }
 
     /** Opens an address the user typed. */

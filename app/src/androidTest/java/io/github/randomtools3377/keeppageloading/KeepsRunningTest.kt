@@ -96,8 +96,15 @@ class KeepsRunningTest {
         scenario.close()
         Thread.sleep(2_000)
         var screenLeft: MainActivity? = null
-        instrumentation.runOnMainSync { screenLeft = Page.screen }
+        var parked = false
+        var parkingError: String? = null
+        instrumentation.runOnMainSync {
+            screenLeft = Page.screen
+            parked = Parking.isParked
+            parkingError = Parking.lastError
+        }
         assertNull("The screen should be closed", screenLeft)
+        assertTrue("The page should be in its invisible window: $parkingError", parked)
 
         val before = report(Page.currentView!!)
         Thread.sleep(60_000)

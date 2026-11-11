@@ -2,6 +2,7 @@ package io.github.randomtools3377.keeppageloading
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.MutableContextWrapper
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -9,6 +10,7 @@ import android.media.ImageReader
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.WebView
@@ -31,58 +33,77 @@ object Parking {
     private var window: FrameLayout? = null
     private var windowManager: WindowManager? = null
 
+    private const val TAG = "Parking"
+
     /** The window context the page uses while it's parked. */
     var context: Context? = null
         private set
 
     val isParked: Boolean get() = window != null
 
-    fun park(app: Context, web: WebView, width: Int, height: Int) {
+    /** Why the last try to park the page didn't work, if it didn't. */
+    var lastError: String? = null
+        private set
+
+    /**
+     * Moves the page into its invisible window. [wrapper] is the page's context, which is
+     * pointed at the window first, so the page is never in a window it doesn't belong to.
+     * If anything goes wrong, the page is left out of any window: it still runs, only slower.
+     */
+    fun park(app: Context, web: WebView, wrapper: MutableContextWrapper?, width: Int, height: Int) {
         leave(web)
-        val metrics = app.resources.displayMetrics
-        val w = (if (width > 0) width else metrics.widthPixels).coerceAtLeast(1)
-        val h = (if (height > 0) height else metrics.heightPixels).coerceAtLeast(1)
-
-        // What the page draws goes here and is thrown away straight away, so drawing never
-        // waits for room.
-        val images = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2)
-        images.setOnImageAvailableListener({ it.acquireLatestImage()?.close() }, Handler(Looper.getMainLooper()))
-
-        val virtual = app.getSystemService(DisplayManager::class.java)
-            .createVirtualDisplay("keep-page-loading", w, h, metrics.densityDpi, images.surface, 0)
-        val displayContext = app.createDisplayContext(virtual.display)
-        val windowContext = if (Build.VERSION.SDK_INT >= 30) {
-            displayContext.createWindowContext(WindowManager.LayoutParams.TYPE_PRIVATE_PRESENTATION, null)
-        } else {
-            displayContext
-        }
-        val manager = windowContext.getSystemService(WindowManager::class.java)
-        val holder = FrameLayout(windowContext)
-        (web.parent as? ViewGroup)?.removeView(web)
-        holder.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        var virtual: VirtualDisplay? = null
+        var images: ImageReader? = null
+        val holder: FrameLayout
         try {
+            val metrics = app.resources.displayMetrics
+            val w = (if (width > 0) width else metrics.widthPixels).coerceAtLeast(1)
+            val h = (if (height > 0) height else metrics.heightPixels).coerceAtLeast(1)
+
+            // What the page draws goes here and is thrown away straight away, so drawing never
+            // waits for room.
+            images = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2).apply {
+                setOnImageAvailableListener({ it.acquireLatestImage()?.close() }, Handler(Looper.getMainLooper()))
+            }
+            virtual = app.getSystemService(DisplayManager::class.java)
+                .createVirtualDisplay("keep-page-loading", w, h, metrics.densityDpi, images.surface, 0)
+            val displayContext = app.createDisplayContext(virtual.display)
+            val windowContext = if (Build.VERSION.SDK_INT >= 30) {
+                displayContext.createWindowContext(WindowManager.LayoutParams.TYPE_PRIVATE_PRESENTATION, null)
+            } else {
+                displayContext
+            }
+            val manager = windowContext.getSystemService(WindowManager::class.java)
+            holder = FrameLayout(windowContext)
+            (web.parent as? ViewGroup)?.removeView(web)
+            wrapper?.baseContext = windowContext
+            holder.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             manager.addView(
                 holder,
                 WindowManager.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     WindowManager.LayoutParams.TYPE_PRIVATE_PRESENTATION,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                     PixelFormat.OPAQUE,
                 ),
             )
+            display = virtual
+            reader = images
+            window = holder
+            windowManager = manager
+            context = windowContext
+            lastError = null
         } catch (e: RuntimeException) {
-            // The phone wouldn't make the window. The page still runs, only more slowly.
-            holder.removeView(web)
-            virtual.release()
-            images.close()
-            return
+            Log.w(TAG, "Couldn't park the page", e)
+            lastError = e.toString()
+            (web.parent as? ViewGroup)?.removeView(web)
+            wrapper?.baseContext = app
+            virtual?.release()
+            images?.close()
         }
-        display = virtual
-        reader = images
-        window = holder
-        windowManager = manager
-        context = windowContext
     }
 
     /** Takes the page out of its invisible window, and closes the window. */
