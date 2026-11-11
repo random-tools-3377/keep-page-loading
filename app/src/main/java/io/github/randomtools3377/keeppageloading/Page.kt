@@ -63,23 +63,32 @@ object Page {
     private val crashes = ArrayDeque<Long>()
     private val retry = Runnable { view?.reload() }
 
+    // The page's size on the screen, which it keeps while it's parked.
+    private var lastWidth = 0
+    private var lastHeight = 0
+
     /** Shows the page on the screen, making it first if needed. */
     fun attach(screen: MainActivity, area: ViewGroup) {
         val web = view ?: create()
         this.screen = screen
+        Parking.leave(web)
         context?.baseContext = screen
         (web.parent as? ViewGroup)?.removeView(web)
         area.addView(web, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
 
-    /** The screen is closing. The page carries on without it. */
+    /** The screen is closing. The page carries on without it, in its invisible window. */
     fun detach(screen: MainActivity) {
         if (this.screen !== screen) return
         dialog?.dismiss()
         dialog = null
-        view?.let { (it.parent as? ViewGroup)?.removeView(it) }
-        context?.baseContext = app
         this.screen = null
+        view?.let { park(it) }
+    }
+
+    private fun park(web: KeepRunningWebView) {
+        Parking.park(app, web, lastWidth, lastHeight)
+        context?.baseContext = Parking.context ?: app
     }
 
     /** Opens an address the user typed. */
@@ -103,6 +112,7 @@ object Page {
         handler.removeCallbacksAndMessages(null)
         dialog?.dismiss()
         dialog = null
+        Parking.leave(view)
         view?.let {
             (it.parent as? ViewGroup)?.removeView(it)
             it.stopLoading()
@@ -116,8 +126,9 @@ object Page {
         screen?.finishAndRemoveTask()
     }
 
+    /** Puts a new page on the screen, or in its invisible window while the screen is closed. */
     private fun placeOnScreen(web: KeepRunningWebView) {
-        val screen = screen ?: return
+        val screen = screen ?: return park(web)
         (web.parent as? ViewGroup)?.removeView(web)
         screen.pageArea.addView(web, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
@@ -156,6 +167,12 @@ object Page {
         web.webViewClient = Client
         web.webChromeClient = ChromeClient
         web.setDownloadListener { url, _, _, _, _ -> openOutside(url) }
+        web.addOnLayoutChangeListener { _, left, top, right, bottom, _, _, _, _ ->
+            if (!Parking.isParked && right > left && bottom > top) {
+                lastWidth = right - left
+                lastHeight = bottom - top
+            }
+        }
         view = web
         return web
     }
@@ -206,6 +223,7 @@ object Page {
             dead.destroy()
             return
         }
+        Parking.leave(dead)
         (dead.parent as? ViewGroup)?.removeView(dead)
         dead.destroy()
         view = null
