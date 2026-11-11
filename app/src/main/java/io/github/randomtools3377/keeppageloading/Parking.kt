@@ -96,6 +96,7 @@ object Parking {
             windowManager = manager
             context = windowContext
             lastError = null
+            Log.i(TAG, "Parked the page on display ${virtual.display.displayId} at ${w}x$h")
         } catch (e: RuntimeException) {
             Log.w(TAG, "Couldn't park the page", e)
             lastError = e.toString()

@@ -92,16 +92,20 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          # If the app crashes, show why.
-          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest || { "$ANDROID_HOME/platform-tools/adb" logcat -d -b crash | tail -n 120; "$ANDROID_HOME/platform-tools/adb" logcat -d -s Parking:W | tail -n 40; exit 1; }
+          # The whole device log is kept from the start, so a crash can be shown afterwards.
+          script: |
+            nohup "$ANDROID_HOME/platform-tools/adb" logcat -v threadtime > app/build/device-logcat.txt 2>&1 &
+            ./gradlew --no-daemon :app:connectedDebugAndroidTest
 
-      - name: Show what the test measured
+      - name: Show what the test measured, and any crash
         if: always()
         run: |
-          find app/build/outputs/androidTest-results -name 'logcat-*.txt' \
-            -exec grep -h 'KeepsRunningTest' {} + 2>/dev/null | head -n 50 || true
+          log=app/build/device-logcat.txt
+          if [ -f "$log" ]; then
+            grep -E 'KeepsRunningTest|Parking|AndroidRuntime|FATAL|DEBUG +: |libc +: |chromium.*(FATAL|Check failed|ERROR)|keeppageloading.*(died|crash|ANR|Killing|kill)' "$log" | tail -n 250 || true
+          fi
           find app/build/outputs/androidTest-results -name 'TEST-*.xml' \
-            -exec sed -n '/<failure/,/<\/failure>/p' {} + 2>/dev/null | head -n 200 || true
+            -exec sed -n '/<failure/,/<\/failure>/p' {} + 2>/dev/null | head -n 100 || true
 
       - name: Keep the test reports
         if: failure()
