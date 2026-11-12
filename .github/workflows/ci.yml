@@ -63,7 +63,7 @@ jobs:
   emulator:
     name: Emulator test (the page keeps running with the screen off)
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -93,8 +93,11 @@ jobs:
           arch: x86_64
           disable-animations: true
           # The whole device log is kept from the start, so a crash can be shown afterwards.
+          # Play Services restarts itself on a fresh emulator, closing every WebView app, so the
+          # tests wait for it to settle first.
           script: |
             nohup "$ANDROID_HOME/platform-tools/adb" logcat -v threadtime > app/build/device-logcat.txt 2>&1 &
+            scripts/wait-for-play-services.sh
             ./gradlew --no-daemon :app:connectedDebugAndroidTest
 
       - name: Show what the test measured, and any crash
