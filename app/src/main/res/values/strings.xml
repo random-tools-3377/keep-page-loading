@@ -5,18 +5,58 @@
     <string name="address_hint">Type a web address</string>
     <string name="not_an_address">That doesn\'t look like a web address. Try something like example.com</string>
     <string name="more">More</string>
-    <string name="start_hint">Type the address of the page you want to keep running, then press Go.\n\nIt keeps running with the screen off, and when you leave the app, until you tap Stop in its notification.</string>
+    <string name="start_hint">Type the address of the page you want to keep running, then press Go.\n\nIt keeps running with the screen off, and when you leave the app, until you tap Stop in its notification. Every tab keeps running.\n\nIf nothing on a page changes for 5 minutes while the connection is fine, the phone buzzes once to say it seems to have stopped.</string>
 
     <string name="menu_reload">Reload</string>
     <string name="menu_forward">Forward</string>
+    <string name="menu_new_tab">New tab</string>
+    <string name="menu_close_tab">Close tab</string>
     <string name="menu_battery">Battery settings</string>
     <string name="menu_stop">Stop and close</string>
 
-    <string name="channel_name">Keeping a page running</string>
-    <string name="channel_description">Shows while a page is kept running, with a Stop button.</string>
-    <string name="notification_title">Keeping a page running</string>
+    <string name="tabs">Tabs</string>
+    <string name="new_tab">New tab</string>
+    <string name="new_tab_page">New tab</string>
+    <string name="close_tab_named">Close %1$s</string>
+    <string name="open_in_new_tab">Open in new tab</string>
+    <string name="open_in_background_tab">Open in new tab, stay here</string>
+    <string name="copy_link">Copy link address</string>
+    <string name="link_copied">Link copied</string>
+    <string name="opened_in_background_tab">Opened in a new tab</string>
+
+    <string name="status_running">Running</string>
+    <string name="status_blank">Nothing open yet</string>
+    <string name="status_no_connection">No connection, trying again every 10 seconds</string>
+    <plurals name="status_stopped">
+        <item quantity="one">Nothing has changed for %d minute</item>
+        <item quantity="other">Nothing has changed for %d minutes</item>
+    </plurals>
+
+    <string name="channel_name">Keeping pages running</string>
+    <string name="channel_description">Shows while pages are kept running, with a Stop button.</string>
+    <plurals name="notification_title_running">
+        <item quantity="one">Keeping a page running</item>
+        <item quantity="other">Keeping %d pages running</item>
+    </plurals>
+    <plurals name="notification_title_stopped">
+        <item quantity="one">A page seems to have stopped</item>
+        <item quantity="other">%d pages seem to have stopped</item>
+    </plurals>
+    <string name="notification_title_waiting">Waiting for the connection</string>
+    <string name="notification_title_none">Keeping pages running</string>
     <string name="notification_no_page">No page open yet</string>
     <string name="notification_stop">Stop</string>
+
+    <string name="stopped_channel_name">A page stopped</string>
+    <string name="stopped_channel_description">Buzzes once when nothing on a page has changed for 5 minutes while the connection is fine.</string>
+    <plurals name="alert_title">
+        <item quantity="one">A page seems to have stopped</item>
+        <item quantity="other">%d pages seem to have stopped</item>
+    </plurals>
+    <plurals name="alert_text">
+        <item quantity="one">%1$s: nothing has changed for %2$d minute, though the connection is fine.</item>
+        <item quantity="other">%1$s: nothing has changed for %2$d minutes, though the connection is fine.</item>
+    </plurals>
 
     <string name="page_crashed">The page stopped working, so it was loaded again.</string>
     <string name="page_crashed_again">The page keeps stopping. Tap Reload to try again.</string>

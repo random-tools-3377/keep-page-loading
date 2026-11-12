@@ -9,6 +9,12 @@ off and after the app is left, until the user taps Stop. It is for one person.
   tests, the commits, the issues or the Releases.
 - The page keeps running with the screen off and after the app is closed, until Stop.
 - Sites that pause themselves when hidden or unfocused are kept going.
+- When the connection fails, the page is tried again every 10 seconds until it loads.
+- Tabs. Every tab keeps running, on screen or not. Long-pressing a link offers "Open in new
+  tab"; a tapped link a site opens in a new window opens in a new tab.
+- A page that seems to have stopped is reported: nothing on the whole page has changed, and it
+  hasn't talked to its server, for 5 minutes while the phone's connection is fine. The phone
+  buzzes and sounds once, and the notification says so until the page changes again.
 
 Anything not written here is not decided, so ask the owner rather than filling it in.
 

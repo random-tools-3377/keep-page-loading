@@ -9,14 +9,32 @@ package io.github.randomtools3377.keeppageloading
  *
  * Animation frames also stop coming while the screen is off, because nothing is being drawn,
  * and a page that runs on them would freeze. So each one also comes after 200 ms at the latest.
+ *
+ * It also tells the app whenever the page changes, at most every 5 seconds, so the app can tell
+ * when a page has stopped.
  */
 object StayActive {
     const val FRAME_FALLBACK_MS = 200
+
+    /** The name of the object the app gives each page for saying it has changed. */
+    const val ACTIVITY_OBJECT = "keepPageLoadingActivity"
 
     val SCRIPT = """
         (function () {
           if (window.__keepPageLoading) return;
           window.__keepPageLoading = true;
+
+          var activity = window.$ACTIVITY_OBJECT;
+          if (activity && window.MutationObserver) {
+            var lastSaid = 0;
+            new MutationObserver(function () {
+              var now = performance.now();
+              if (lastSaid === 0 || now - lastSaid >= 5000) {
+                lastSaid = now;
+                try { activity.postMessage('changed'); } catch (e) {}
+              }
+            }).observe(document, { subtree: true, childList: true, characterData: true, attributes: true });
+          }
 
           var shown = { configurable: true, get: function () { return 'visible'; } };
           var notHidden = { configurable: true, get: function () { return false; } };

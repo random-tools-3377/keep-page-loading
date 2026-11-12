@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -31,9 +32,33 @@
             android:textColorHint="@color/text_quiet"
             android:textSize="15sp" />
 
+        <FrameLayout
+            android:id="@+id/tabs"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="4dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/tabs"
+            android:focusable="true"
+            android:clickable="true">
+
+            <TextView
+                android:id="@+id/tab_count"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:background="@drawable/tab_count_background"
+                android:gravity="center"
+                android:importantForAccessibility="no"
+                tools:text="1"
+                android:textColor="@color/text"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </FrameLayout>
+
         <ImageButton
             android:id="@+id/menu"
-            android:layout_width="48dp"
+            android:layout_width="44dp"
             android:layout_height="48dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/more"
@@ -49,6 +74,7 @@
         android:progressTint="@color/accent"
         android:visibility="invisible" />
 
+    <!-- The tabs' pages are put in here, under the hint and the tab list. -->
     <FrameLayout
         android:id="@+id/page_area"
         android:layout_width="match_parent"
@@ -61,10 +87,62 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="top"
+            android:background="@color/page"
             android:lineSpacingMultiplier="1.2"
             android:padding="24dp"
             android:text="@string/start_hint"
             android:textColor="@color/text_quiet"
             android:textSize="16sp" />
+
+        <LinearLayout
+            android:id="@+id/tab_list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/page"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/tabs"
+                    android:textColor="@color/text"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/new_tab"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/new_tab"
+                    android:textColor="@color/accent" />
+            </LinearLayout>
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:id="@+id/tab_rows"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </ScrollView>
+        </LinearLayout>
     </FrameLayout>
 </LinearLayout>
