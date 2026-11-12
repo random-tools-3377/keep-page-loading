@@ -60,11 +60,23 @@ object Page {
 
     val hasPage: Boolean get() = Prefs.lastAddress != null
 
+    /** How long to wait before loading the page again when the connection fails. */
+    const val RETRY_MS = 10_000L
+
+    /** How many times the page has been loaded again after a failed connection. */
+    var retriesSoFar = 0
+        private set
+
+    /** How many times loading the page has failed. */
+    var failuresSoFar = 0
+        private set
+
     private val handler = Handler(Looper.getMainLooper())
-    private var retries = 0
-    private var failedThisLoad = false
     private val crashes = ArrayDeque<Long>()
-    private val retry = Runnable { view?.reload() }
+    private val retry = Runnable {
+        retriesSoFar++
+        view?.reload()
+    }
 
     // The page's size on the screen, which it keeps while it's parked.
     private var lastWidth = 0
@@ -97,7 +109,6 @@ object Page {
     /** Opens an address the user typed. */
     fun open(address: String) {
         handler.removeCallbacks(retry)
-        retries = 0
         Prefs.lastAddress = address
         val web = view ?: create().also { placeOnScreen(it) }
         web.loadUrl(address)
@@ -212,12 +223,10 @@ object Page {
         }
     }
 
-    /** The connection dropped: try again in 30 seconds, then less often, up to every 5 minutes. */
+    /** The connection failed: try again in 10 seconds, and every 10 seconds until it works. */
     private fun retryLater() {
         handler.removeCallbacks(retry)
-        val delay = minOf(30_000L shl minOf(retries, 4), 5 * 60_000L)
-        retries++
-        handler.postDelayed(retry, delay)
+        handler.postDelayed(retry, RETRY_MS)
     }
 
     /** The page's process stopped (Android closed it, or it crashed). Make a new one. */
@@ -261,14 +270,12 @@ object Page {
         }
 
         override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
-            failedThisLoad = false
             handler.removeCallbacks(retry)
             if (!startScriptAdded) view.evaluateJavascript(StayActive.SCRIPT, null)
             screen?.showAddress(url)
         }
 
         override fun onPageFinished(view: WebView, url: String?) {
-            if (!failedThisLoad) retries = 0
             if (!startScriptAdded) view.evaluateJavascript(StayActive.SCRIPT, null)
             CookieManager.getInstance().flush()
         }
@@ -279,7 +286,7 @@ object Page {
 
         override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
             if (!request.isForMainFrame) return
-            failedThisLoad = true
+            failuresSoFar++
             if (error.errorCode in retryErrors) retryLater()
         }
 

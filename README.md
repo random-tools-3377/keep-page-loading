@@ -29,7 +29,8 @@ If the phone still closes it (some Samsung, Xiaomi and other phones do), tap ⋮
 - The page is always told it's on screen and in use, so sites that pause themselves when you
   look away carry on. With nothing drawn while the screen is off, animations that pages run on
   still get a turn at least 5 times a second.
-- A dropped connection is tried again on its own, and a page Android closed is loaded again.
+- When the connection fails, the page is tried again every 10 seconds until it loads, and a page
+  Android closed is loaded again.
 
 ## Tested
 

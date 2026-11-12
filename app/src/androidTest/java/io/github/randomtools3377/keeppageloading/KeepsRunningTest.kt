@@ -128,6 +128,31 @@ class KeepsRunningTest {
         assertTrue("The notification should be keeping the app running: $service", "isForeground=true" in service)
     }
 
+    @Test
+    fun triesAgainEvery10SecondsWhenTheConnectionFails() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            var retriesBefore = 0
+            var failuresBefore = 0
+            instrumentation.runOnMainSync {
+                retriesBefore = Page.retriesSoFar
+                failuresBefore = Page.failuresSoFar
+                // An address that can never be reached, like a connection that's down.
+                Page.open(UNREACHABLE_ADDRESS)
+            }
+            Thread.sleep(35_000)
+            var retries = 0
+            var failures = 0
+            instrumentation.runOnMainSync {
+                retries = Page.retriesSoFar - retriesBefore
+                failures = Page.failuresSoFar - failuresBefore
+            }
+            Log.i(TAG, "Unreachable page: $failures failures, $retries tries again in 35 s")
+            // Every 10 seconds: 3 times in 35 seconds, or 2 if each failure took a few seconds.
+            assertTrue("In 35 seconds it should have tried again 2 or 3 times, not $retries", retries in 2..3)
+            assertTrue("Each try should have reached for the page again: $failures failures after $retries tries", failures >= retries)
+        }
+    }
+
     private fun checkKeptRunning(before: JSONObject, after: JSONObject, seconds: Int) {
         val pauses = after.getInt("pauses") - before.getInt("pauses")
         val hidden = after.getInt("hidden") - before.getInt("hidden")
@@ -194,6 +219,7 @@ class KeepsRunningTest {
     private companion object {
         const val TAG = "KeepsRunningTest"
         const val TEST_ADDRESS = "https://keep-page-loading.test/"
+        const val UNREACHABLE_ADDRESS = "https://nothing-here.keep-page-loading.invalid/"
 
         const val TEST_PAGE = """<!doctype html>
 <html><body><h1 id="n">0</h1><script>
